@@ -1,0 +1,14 @@
+{
+  "nom": "Yannick",
+  "type": "enfant",
+  "pin": "1111",
+  "taches": {
+    "lundi": ["Faire son lit", "Nourrir le chat"],
+    "mardi": ["Faire son lit", "Nourrir le chat"],
+    "mercredi": ["Faire son lit", "Nourrir le chat"],
+    "jeudi": ["Faire son lit", "Nourrir le chat"],
+    "vendredi": ["Faire son lit", "Nourrir le chat"],
+    "samedi": ["Nourrir le chat"],
+    "dimanche": ["Nourrir le chat"]
+  }
+}

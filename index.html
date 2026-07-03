@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le Carnet de la Maison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+<style>
+/* ============================================================
+   ZONE DE CONFIGURATION — À REMPLIR PAR TOI
+   ============================================================ */
+</style>
+</head>
+<body>
+
+<script>
+/* ============================================================
+   1) CONFIGURATION FIREBASE
+   Va chercher ce bloc dans la console Firebase :
+   Paramètres du projet > Général > Vos applications > Config
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyAZLQZeNTnY1CXekyrePwnzBb-Yo1v6ePc",
+  authDomain: "taches-maison-d5a9c.firebaseapp.com",
+  projectId: "taches-maison-d5a9c",
+  storageBucket: "taches-maison-d5a9c.firebasestorage.app",
+  messagingSenderId: "246007386631",
+  appId: "1:246007386631:web:0f0b8b0c55d395e71a10a2"
+};
+
+/* ============================================================
+   2) CONFIGURATION EMAILJS
+   Service ID, Template ID et Public Key depuis ton compte EmailJS
+   Le template utilise les variables : {{child_name}}, {{task_name}}
+   Les destinataires (To Email) sont déjà configurés en dur dans
+   le template EmailJS — pas besoin de {{to_email}}.
+   ============================================================ */
+const EMAILJS_PUBLIC_KEY  = "FJCot7ZWPE_zIE7G-";
+const EMAILJS_SERVICE_ID  = "service_rtjo66w";
+const EMAILJS_TEMPLATE_ID = "template_mx01xg9";
+
+const PARENT_EMAILS = ["michaudlaurence@hotmail.com", "martinguillemette622@gmail.com"];
+
+/* ============================================================
+   3) LES PERSONNES ET LEURS TÂCHES
+   Chaque personne a maintenant son propre fichier de config :
+   config/<id>.json  (ex: config/maxime.json)
+
+   Structure attendue dans chaque fichier :
+   {
+     "nom": "Maxime",
+     "type": "enfant",              // "parent" ou "enfant"
+     "pin": "1111",                 // code à 4 chiffres
+     "taches": {
+       "lundi": ["Faire son lit", "..."],
+       "mardi": [...],
+       ... (tous les jours de la semaine)
+     }
+   }
+
+   Pour ajouter/retirer une tâche : édite simplement le fichier
+   JSON de la personne concernée, pas besoin de toucher au HTML.
+   Pour ajouter une nouvelle personne : crée son fichier JSON dans
+   config/ ET ajoute son identifiant dans la liste ci-dessous.
+   ============================================================ */
+const IDENTIFIANTS_PERSONNES = ["martin", "laurence", "maxime", "yannick", "myriam", "valerie"];
+
+let PERSONNES = {};
+let TACHES = {};
+
+async function chargerConfigPersonnes(){
+  const resultats = await Promise.all(
+    IDENTIFIANTS_PERSONNES.map(async (id) => {
+      try{
+        const reponse = await fetch(`config/${id}.json`, { cache: "no-store" });
+        if(!reponse.ok) throw new Error(`Fichier introuvable : config/${id}.json`);
+        const data = await reponse.json();
+        return { id, data };
+      }catch(e){
+        console.error(`Erreur de chargement pour "${id}":`, e);
+        return { id, data: null };
+      }
+    })
+  );
+
+  resultats.forEach(({ id, data }) => {
+    if(!data) return;
+    PERSONNES[id] = { nom: data.nom, type: data.type, pin: data.pin };
+    TACHES[id] = data.taches || {};
+  });
+}
+</script>
+
+<div id="app"></div>
+
+<style>
+:root{
+  --fond:#E9EDF3;
+  --texte:#2B3444;
+  --texte-doux:#8A93A6;
+  --accent:#3B82F6;
+  --accent-doux:#DCE9FF;
+  --valide:#34C77B;
+  --danger:#F0645A;
+  --radius:18px;
+  --ombre-ext: 8px 8px 16px #c3cad6, -8px -8px 16px #ffffff;
+  --ombre-ext-sm: 4px 4px 10px #c3cad6, -4px -4px 10px #ffffff;
+  --ombre-int: inset 4px 4px 8px #c3cad6, inset -4px -4px 8px #ffffff;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--fond);
+  font-family:'Poppins', sans-serif;
+  color:var(--texte);
+  min-height:100vh;
+}
+#app{
+  max-width:480px;
+  margin:0 auto;
+  min-height:100vh;
+  padding:32px 22px 60px;
+  background:var(--fond);
+}
+h1,h2,h3{
+  font-family:'Poppins', sans-serif;
+  margin:0;
+}
+.entete{
+  text-align:left;
+  margin-bottom:30px;
+}
+.entete h1{
+  font-size:1.5rem;
+  font-weight:700;
+  color:var(--texte);
+  letter-spacing:0.2px;
+}
+
+/* --- Grille login --- */
+.grille-noms{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-top:24px;
+}
+.carte-nom{
+  background:var(--fond);
+  border:none;
+  border-radius:var(--radius);
+  box-shadow:var(--ombre-ext);
+  padding:26px 10px;
+  text-align:center;
+  font-family:'Poppins',sans-serif;
+  font-size:1.05rem;
+  font-weight:600;
+  color:var(--texte);
+  cursor:pointer;
+  transition:box-shadow .15s ease, transform .15s ease, color .15s ease;
+}
+.carte-nom:hover{
+  color:var(--accent);
+}
+.carte-nom:active{
+  box-shadow:var(--ombre-int);
+  transform:translateY(1px);
+}
+
+/* --- Écran PIN --- */
+.ecran-pin{
+  text-align:center;
+  margin-top:30px;
+}
+.ecran-pin h2{ font-size:1.25rem; margin-bottom:6px; font-weight:600;}
+.ecran-pin .retour{
+  display:inline-block;
+  margin-bottom:24px;
+  color:var(--texte-doux);
+  font-size:0.85rem;
+  cursor:pointer;
+}
+.pin-points{
+  display:flex;
+  justify-content:center;
+  gap:14px;
+  margin:22px 0 30px;
+}
+.pin-point{
+  width:16px;height:16px;border-radius:50%;
+  background:var(--fond);
+  box-shadow:var(--ombre-int);
+}
+.pin-point.rempli{ background:var(--accent); box-shadow:none; }
+.pavé-numerique{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  max-width:260px;
+  margin:0 auto;
+}
+.touche{
+  padding:18px 0;
+  font-size:1.2rem;
+  font-family:'Poppins',sans-serif;
+  font-weight:500;
+  background:var(--fond);
+  border:none;
+  border-radius:var(--radius);
+  box-shadow:var(--ombre-ext-sm);
+  cursor:pointer;
+  color:var(--texte);
+}
+.touche:active{ box-shadow:var(--ombre-int); color:var(--accent); }
+.touche.effacer{ font-size:1rem; }
+.erreur-pin{
+  color:var(--danger);
+  font-size:0.85rem;
+  margin-top:14px;
+  min-height:18px;
+}
+
+/* --- Écran principal --- */
+.barre-haut{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:22px;
+}
+.deconnexion{
+  font-size:0.78rem;
+  color:var(--texte-doux);
+  cursor:pointer;
+  padding:8px 14px;
+  border-radius:12px;
+  box-shadow:var(--ombre-ext-sm);
+}
+.deconnexion:active{ box-shadow:var(--ombre-int); }
+.bienvenue{
+  font-size:1.3rem;
+  font-weight:600;
+}
+
+.selecteur-jour{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--fond);
+  border-radius:var(--radius);
+  box-shadow:var(--ombre-ext);
+  padding:16px 18px;
+  margin-bottom:16px;
+}
+.selecteur-jour .fleche{
+  cursor:pointer;
+  font-size:1.2rem;
+  width:36px;height:36px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--ombre-ext-sm);
+  user-select:none;
+  color:var(--accent);
+}
+.selecteur-jour .fleche:active{ box-shadow:var(--ombre-int); }
+.selecteur-jour .date-texte{
+  text-align:center;
+  flex:1;
+}
+.selecteur-jour .date-texte .jour-nom{
+  font-family:'Poppins',sans-serif;
+  font-size:1.05rem;
+  font-weight:600;
+  text-transform:capitalize;
+}
+.selecteur-jour .date-texte .jour-num{
+  font-size:0.75rem;
+  color:var(--texte-doux);
+}
+.bouton-aujourdhui{
+  display:block;
+  margin:0 auto 22px;
+  padding:9px 22px;
+  font-family:'Poppins',sans-serif;
+  font-size:0.78rem;
+  font-weight:600;
+  color:var(--accent);
+  background:var(--fond);
+  border:none;
+  border-radius:14px;
+  box-shadow:var(--ombre-ext-sm);
+  cursor:pointer;
+}
+.bouton-aujourdhui:active{ box-shadow:var(--ombre-int); }
+
+.liste-taches{
+  border-radius:var(--radius);
+  overflow:hidden;
+  background:var(--fond);
+  box-shadow:var(--ombre-ext);
+  padding:6px 4px;
+}
+.tache{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:14px 14px;
+  cursor:pointer;
+}
+.case{
+  flex-shrink:0;
+  width:26px;height:26px;
+  border-radius:9px;
+  background:var(--fond);
+  box-shadow:var(--ombre-int);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.95rem;
+  color:transparent;
+}
+.case.fait{
+  background:var(--texte-doux);
+  box-shadow:none;
+  color:#fff;
+}
+.case.valide{
+  background:var(--valide);
+  box-shadow:none;
+  color:#fff;
+}
+.texte-tache{
+  flex:1;
+  font-size:0.95rem;
+  font-weight:500;
+}
+.texte-tache.fait{
+  color:var(--texte-doux);
+  text-decoration:line-through;
+}
+.etiquette-attente{
+  font-size:0.65rem;
+  color:var(--accent);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  font-weight:700;
+}
+.vide{
+  text-align:center;
+  padding:50px 20px;
+  color:var(--texte-doux);
+  font-weight:500;
+}
+
+/* --- Vue parent (validation) --- */
+.section-titre{
+  font-family:'Poppins',sans-serif;
+  font-size:0.95rem;
+  font-weight:600;
+  margin:24px 0 10px;
+  color:var(--texte);
+}
+.carte-membre{
+  border-radius:var(--radius);
+  background:var(--fond);
+  box-shadow:var(--ombre-ext);
+  margin-bottom:16px;
+  overflow:hidden;
+  padding:4px;
+}
+.carte-membre .titre-membre{
+  padding:12px 14px 6px;
+  font-weight:700;
+  font-size:0.9rem;
+  color:var(--texte);
+}
+.bouton-valider{
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  padding:7px 14px;
+  border-radius:10px;
+  font-size:0.72rem;
+  cursor:pointer;
+  font-weight:600;
+  font-family:'Poppins',sans-serif;
+}
+.bouton-valider:active{ opacity:0.85; }
+</style>
+
+<script>
+/* ============================================================
+   INITIALISATION
+   ============================================================ */
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+emailjs.init(EMAILJS_PUBLIC_KEY);
+
+const DOC_REF = db.collection("carnet_maison").doc("etat_taches");
+
+const JOURS_SEMAINE = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+
+let etatCourant = { completions: {} }; // synchronisé avec Firestore
+let personneActive = null;             // clé de PERSONNES
+let pinSaisi = "";
+let dateAffichee = new Date();
+let vueActuelle = "login"; // login | pin | taches
+
+/* ---- Écoute en temps réel de Firestore ---- */
+DOC_REF.onSnapshot((snap) => {
+  if (snap.exists) {
+    etatCourant = snap.data();
+  } else {
+    etatCourant = { completions: {} };
+    DOC_REF.set(etatCourant);
+  }
+  rendre();
+}, (err) => {
+  console.error("Erreur Firestore :", err);
+});
+
+/* ---- Utilitaires date ---- */
+function formatDateCle(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function nomJour(d){ return JOURS_SEMAINE[d.getDay()]; }
+function texteDateLisible(d){
+  const jourNom = d.toLocaleDateString('fr-FR', { weekday:'long' });
+  const reste = d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+  return { jourNom, reste };
+}
+
+/* ---- Clé de complétion unique ---- */
+function cleCompletion(personneId, dateCle, index){
+  return `${dateCle}_${personneId}_${index}`;
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function ouvrirEcranPin(id){
+  personneActive = id;
+  pinSaisi = "";
+  vueActuelle = "pin";
+  rendre();
+}
+
+function retourLogin(){
+  personneActive = null;
+  pinSaisi = "";
+  vueActuelle = "login";
+  rendre();
+}
+
+function saisirChiffre(chiffre){
+  if(pinSaisi.length>=4) return;
+  pinSaisi += chiffre;
+  if(pinSaisi.length===4){
+    if(pinSaisi === PERSONNES[personneActive].pin){
+      vueActuelle = "taches";
+      dateAffichee = new Date();
+      setTimeout(rendre, 120);
+    } else {
+      setTimeout(()=>{ pinSaisi=""; rendre(); document.getElementById("erreur-pin").textContent="Code incorrect, réessaie."; }, 250);
+    }
+  }
+  rendre();
+}
+
+function effacerChiffre(){
+  pinSaisi = pinSaisi.slice(0,-1);
+  rendre();
+}
+
+function changerJour(delta){
+  dateAffichee = new Date(dateAffichee);
+  dateAffichee.setDate(dateAffichee.getDate()+delta);
+  rendre();
+}
+
+function allerAujourdhui(){
+  dateAffichee = new Date();
+  rendre();
+}
+
+let enTraitement = new Set(); // empêche un double-clic d'envoyer 2x la même action
+
+async function toggleTache(personneId, index){
+  const dateCle = formatDateCle(dateAffichee);
+  const cle = cleCompletion(personneId, dateCle, index);
+
+  // Verrou anti double-clic / double-tap : ignore si un clic est déjà en cours sur cette tâche
+  if(enTraitement.has(cle)) return;
+  enTraitement.add(cle);
+
+  const existant = etatCourant.completions[cle];
+  const nouvelEtat = { ...etatCourant, completions: { ...etatCourant.completions } };
+  let vientDEtreCoche = false;
+
+  if(existant && existant.fait){
+    delete nouvelEtat.completions[cle];
+  } else {
+    nouvelEtat.completions[cle] = {
+      fait:true,
+      valide:false,
+      par: PERSONNES[personneId].nom,
+      horodatage: new Date().toISOString()
+    };
+    vientDEtreCoche = true;
+  }
+
+  // Mise à jour optimiste immédiate (locale) pour que l'UI et l'état interne
+  // reflètent le changement tout de suite, avant même la réponse de Firestore.
+  // Ça évite qu'un second clic rapide ne "revoit" l'ancien état et ne redéclenche un courriel.
+  etatCourant = nouvelEtat;
+  rendre();
+
+  if(vientDEtreCoche && PERSONNES[personneId].type === "enfant"){
+    const nomTache = TACHES[personneId][nomJour(dateAffichee)][index];
+    enfilerCourriels(PERSONNES[personneId].nom, nomTache);
+  }
+
+  try{
+    await DOC_REF.set(nouvelEtat);
+  }catch(e){
+    console.error("Erreur d'écriture Firestore:", e);
+    alert("Impossible de synchroniser la tâche. Vérifie ta connexion internet.");
+  } finally {
+    enTraitement.delete(cle);
+  }
+}
+
+async function validerTache(cle){
+  const nouvelEtat = { ...etatCourant, completions: { ...etatCourant.completions } };
+  if(nouvelEtat.completions[cle]){
+    nouvelEtat.completions[cle] = { ...nouvelEtat.completions[cle], valide:true };
+    try{
+      await DOC_REF.set(nouvelEtat);
+    }catch(e){
+      console.error(e);
+    }
+  }
+}
+
+/* ============================================================
+   ENVOI DE COURRIELS — file d'attente
+   EmailJS (plan gratuit) limite à 1 requête toutes les 5 secondes.
+   On empile les envois et on les traite un par un avec un délai
+   entre chaque, pour ne jamais dépasser la limite et éviter les
+   doublons causés par des envois trop rapprochés.
+   ============================================================ */
+const DELAI_ENTRE_COURRIELS_MS = 5200; // légère marge au-dessus de 5s
+let fileCourriels = [];
+let fileEnCours = false;
+
+function enfilerCourriels(nomEnfant, nomTache){
+  // Une seule requête suffit : les 2 adresses des parents sont déjà
+  // configurées en dur dans le champ "To Email" du template EmailJS.
+  fileCourriels.push({ nomEnfant, nomTache });
+  traiterFileCourriels();
+}
+
+function traiterFileCourriels(){
+  if(fileEnCours) return;
+  fileEnCours = true;
+
+  const envoyerSuivant = () => {
+    const item = fileCourriels.shift();
+    if(!item){ fileEnCours = false; return; }
+
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      child_name: item.nomEnfant,
+      task_name: item.nomTache,
+      message: `${item.nomEnfant} a terminé "${item.nomTache}". Veuillez vérifier puis valider la complétion.`
+    }).catch((err)=> console.error("Erreur EmailJS:", err));
+
+    if(fileCourriels.length > 0){
+      setTimeout(envoyerSuivant, DELAI_ENTRE_COURRIELS_MS);
+    } else {
+      fileEnCours = false;
+    }
+  };
+
+  envoyerSuivant();
+}
+
+/* ============================================================
+   RENDU
+   ============================================================ */
+function rendre(){
+  const app = document.getElementById("app");
+
+  if(vueActuelle === "login"){
+    app.innerHTML = vueLogin();
+  } else if(vueActuelle === "pin"){
+    app.innerHTML = vuePin();
+  } else if(vueActuelle === "taches"){
+    app.innerHTML = vueTaches();
+  }
+}
+
+function vueLogin(){
+  const cartes = Object.entries(PERSONNES).map(([id,p])=>
+    `<div class="carte-nom" onclick="ouvrirEcranPin('${id}')">${p.nom}</div>`
+  ).join("");
+
+  return `
+    <div class="entete">
+      <h1>Le Carnet de la Maison</h1>
+    </div>
+    <div class="grille-noms">${cartes}</div>
+  `;
+}
+
+function vuePin(){
+  const points = [0,1,2,3].map(i=>
+    `<div class="pin-point ${i<pinSaisi.length?'rempli':''}"></div>`
+  ).join("");
+
+  const touches = ["1","2","3","4","5","6","7","8","9","","0","⌫"].map(t=>{
+    if(t==="") return `<div></div>`;
+    if(t==="⌫") return `<div class="touche effacer" onclick="effacerChiffre()">⌫</div>`;
+    return `<div class="touche" onclick="saisirChiffre('${t}')">${t}</div>`;
+  }).join("");
+
+  return `
+    <div class="ecran-pin">
+      <div class="retour" onclick="retourLogin()">← retour</div>
+      <h2>Bonjour ${PERSONNES[personneActive].nom}</h2>
+      <div class="sous-titre" style="font-size:0.8rem;color:var(--encre-douce);">Entre ton code à 4 chiffres</div>
+      <div class="pin-points">${points}</div>
+      <div class="pavé-numerique">${touches}</div>
+      <div class="erreur-pin" id="erreur-pin"></div>
+    </div>
+  `;
+}
+
+function vueTaches(){
+  const p = PERSONNES[personneActive];
+  const dateCle = formatDateCle(dateAffichee);
+  const jour = nomJour(dateAffichee);
+  const { jourNom, reste } = texteDateLisible(dateAffichee);
+
+  let contenuPrincipal = "";
+
+  if(p.type === "enfant"){
+    const taches = (TACHES[personneActive] && TACHES[personneActive][jour]) || [];
+    if(taches.length===0){
+      contenuPrincipal = `<div class="vide">Aucune tâche pour ${jourNom}. 🎉</div>`;
+    } else {
+      const lignes = taches.map((texte, index)=>{
+        const cle = cleCompletion(personneActive, dateCle, index);
+        const info = etatCourant.completions[cle];
+        const fait = !!(info && info.fait);
+        const valide = !!(info && info.valide);
+        let classeCase = "case";
+        let contenuCase = "";
+        if(valide){ classeCase += " valide"; contenuCase = "✓"; }
+        else if(fait){ classeCase += " fait"; contenuCase = "✓"; }
+
+        return `
+          <div class="tache" onclick="toggleTache('${personneActive}', ${index})">
+            <div class="${classeCase}">${contenuCase}</div>
+            <div class="texte-tache ${fait?'fait':''}">${texte}</div>
+            ${fait && !valide ? '<div class="etiquette-attente">à valider</div>' : ''}
+          </div>
+        `;
+      }).join("");
+      contenuPrincipal = `<div class="liste-taches">${lignes}</div>`;
+    }
+  } else {
+    // Vue parent : voir toutes les tâches de tous les enfants pour le jour affiché + validation
+    contenuPrincipal = `<div class="section-titre">Tâches de la famille — ${jourNom}</div>`;
+    const enfants = Object.entries(PERSONNES).filter(([id,pp])=>pp.type==="enfant");
+    let blocs = "";
+    enfants.forEach(([id, pp])=>{
+      const taches = (TACHES[id] && TACHES[id][jour]) || [];
+      if(taches.length===0) return;
+      const lignes = taches.map((texte,index)=>{
+        const cle = cleCompletion(id, dateCle, index);
+        const info = etatCourant.completions[cle];
+        const fait = !!(info && info.fait);
+        const valide = !!(info && info.valide);
+        let classeCase="case";
+        let contenuCase="";
+        if(valide){classeCase+=" valide"; contenuCase="✓";}
+        else if(fait){classeCase+=" fait"; contenuCase="✓";}
+        return `
+          <div class="tache" style="cursor:default;">
+            <div class="${classeCase}">${contenuCase}</div>
+            <div class="texte-tache ${fait?'fait':''}">${texte}</div>
+            ${fait && !valide ? `<button class="bouton-valider" onclick="validerTache('${cle}')">Valider</button>` : ''}
+          </div>
+        `;
+      }).join("");
+      blocs += `<div class="carte-membre"><div class="titre-membre">${pp.nom}</div>${lignes}</div>`;
+    });
+    contenuPrincipal += blocs || `<div class="vide">Aucune tâche prévue aujourd'hui.</div>`;
+  }
+
+  return `
+    <div class="barre-haut">
+      <div class="bienvenue">Bonjour, ${p.nom}</div>
+      <div class="deconnexion" onclick="retourLogin()">Se déconnecter</div>
+    </div>
+
+    <div class="selecteur-jour">
+      <div class="fleche" onclick="changerJour(-1)">‹</div>
+      <div class="date-texte">
+        <div class="jour-nom">${jourNom}</div>
+        <div class="jour-num">${reste}</div>
+      </div>
+      <div class="fleche" onclick="changerJour(1)">›</div>
+    </div>
+    <button class="bouton-aujourdhui" onclick="allerAujourdhui()">Revenir à aujourd'hui</button>
+
+    ${contenuPrincipal}
+  `;
+}
+
+async function demarrer(){
+  document.getElementById("app").innerHTML = `
+    <div class="vide" style="padding-top:120px;">Chargement du carnet…</div>
+  `;
+  await chargerConfigPersonnes();
+  rendre();
+}
+
+demarrer();
+</script>
+</body>
+</html>

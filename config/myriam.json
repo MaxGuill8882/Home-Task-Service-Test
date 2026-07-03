@@ -1,0 +1,14 @@
+{
+  "nom": "Myriam",
+  "type": "enfant",
+  "pin": "1111",
+  "taches": {
+    "lundi": ["Faire son lit", "Mettre la table"],
+    "mardi": ["Faire son lit", "Mettre la table"],
+    "mercredi": ["Faire son lit", "Mettre la table"],
+    "jeudi": ["Faire son lit", "Mettre la table"],
+    "vendredi": ["Faire son lit", "Mettre la table"],
+    "samedi": [],
+    "dimanche": ["Mettre la table"]
+  }
+}

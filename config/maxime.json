@@ -1,0 +1,14 @@
+{
+  "nom": "Maxime",
+  "type": "enfant",
+  "pin": "1111",
+  "taches": {
+    "lundi": ["Faire son lit", "Sortir les poubelles"],
+    "mardi": ["Faire son lit", "Vider le lave-vaisselle"],
+    "mercredi": ["Faire son lit", "Ranger sa chambre"],
+    "jeudi": ["Faire son lit", "Sortir le recyclage"],
+    "vendredi": ["Faire son lit", "Passer l'aspirateur au salon"],
+    "samedi": ["Ranger sa chambre"],
+    "dimanche": []
+  }
+}

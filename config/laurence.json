@@ -1,0 +1,14 @@
+{
+  "nom": "Laurence",
+  "type": "parent",
+  "pin": "1111",
+  "taches": {
+    "lundi": [],
+    "mardi": [],
+    "mercredi": [],
+    "jeudi": [],
+    "vendredi": [],
+    "samedi": [],
+    "dimanche": []
+  }
+}
