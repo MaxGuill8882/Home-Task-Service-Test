@@ -923,12 +923,17 @@ async function gererFichierPhoto(event){
 
   try{
     const blob = await redimensionnerImage(fichier, 400);
-    const ref = storage.ref().child(`profils/${personneActive}.jpg`);
-    await ref.put(blob);
+    const cheminPhoto = `profils/${personneActive}.jpg`;
+    const ref = storage.ref().child(cheminPhoto);
+    await ref.put(blob, { contentType: "image/jpeg" });
     const url = await ref.getDownloadURL();
 
     const nouvelEtat = { ...etatCourant, profils: { ...etatCourant.profils } };
-    nouvelEtat.profils[personneActive] = { ...obtenirProfil(personneActive), photo: url };
+    nouvelEtat.profils[personneActive] = {
+      ...obtenirProfil(personneActive),
+      photo: url,
+      photoPath: cheminPhoto
+    };
     etatCourant = nouvelEtat;
     rendre();
     await DOC_REF.set(nouvelEtat);
