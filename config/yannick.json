@@ -3,12 +3,12 @@
   "type": "enfant",
   "pin": "1111",
   "taches": {
-    "lundi": ["Faire son lit", "Nourrir le chat"],
-    "mardi": ["Faire son lit", "Nourrir le chat"],
-    "mercredi": ["Faire son lit", "Nourrir le chat"],
-    "jeudi": ["Faire son lit", "Nourrir le chat"],
-    "vendredi": ["Faire son lit", "Nourrir le chat"],
-    "samedi": ["Nourrir le chat"],
-    "dimanche": ["Nourrir le chat"]
+    "lundi": ["Nettoyer Litière salon (Soir)","Eau et bouffe salon (Soir)","Ranger sa chambre", "Laver son linge"],
+    "mardi": ["Nettoyer Litière salon (Soir)","Eau et bouffe salon (Soir)","Aide Cuisinier Souper"],
+    "mercredi": ["Nettoyer Litière salon (Soir)","Eau et bouffe salon (Soir)"],
+    "jeudi": ["Nettoyer Litière salon (Soir)","Eau et bouffe salon (Soir)"],
+    "vendredi": ["Nettoyer Litière salon (Soir)","Eau et bouffe salon (Soir)","Balais escalier sous-sol","Ranger sous-sol"],
+    "samedi": ["Nettoyer Litière salon (Soir)","Eau et bouffe salon (Soir)"],
+    "dimanche": ["Nettoyer Litière salon (Soir)","Eau et bouffe salon (Soir)"]
   }
 }
