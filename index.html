@@ -776,7 +776,7 @@ function demanderConfirmation(personneId, index){
   const texte = TACHES[personneId][jour][index];
   actionEnAttente = { personneId, index, texte };
   document.getElementById("texte-modale").innerHTML =
-    `Confirmer que la tâche <strong>${texte}</strong> est terminée ?`;
+    `Confirmer que la tâche                   <strong>${texte}</strong> est terminée ?`;
   document.getElementById("fond-modale").style.display = "flex";
 }
 
