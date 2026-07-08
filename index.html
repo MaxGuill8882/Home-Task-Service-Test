@@ -547,27 +547,49 @@ h1,h2,h3{
 }
 
 /* --- Bouton d'édition profil --- */
-.bouton-edition-profil{
+.conteneur-edition-profil{
   position:fixed;
   right:22px;
   bottom:22px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:10px;
+  z-index:900;
+}
+.options-edition-profil{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.bouton-option-edition,
+.bouton-edition-profil{
   width:56px;
   height:56px;
   border:none;
   border-radius:50%;
-  background:var(--accent);
-  color:#fff;
   display:flex;
   align-items:center;
   justify-content:center;
   font-size:1.2rem;
   cursor:pointer;
   box-shadow:var(--ombre-ext);
-  z-index:900;
 }
+.bouton-option-edition{
+  background:var(--fond);
+  color:var(--accent);
+}
+.bouton-edition-profil{
+  background:var(--accent);
+  color:#fff;
+}
+.bouton-option-edition:active,
 .bouton-edition-profil:active{
   box-shadow:var(--ombre-int);
   transform:translateY(1px);
+}
+.bouton-edition-profil.ouvert{
+  background:var(--danger);
 }
 
 /* --- Modale de confirmation --- */
@@ -643,6 +665,7 @@ let personneActive = null;             // clé de PERSONNES
 let pinSaisi = "";
 let dateAffichee = new Date();
 let vueActuelle = "login"; // login | pin | taches
+let editionProfilOuverte = false;
 
 /* ---- Écoute en temps réel de Firestore ---- */
 DOC_REF.onSnapshot((snap) => {
@@ -686,7 +709,7 @@ function rendreAvatar(personneId, classe){
   const nom = PERSONNES[personneId] ? PERSONNES[personneId].nom : "?";
   const initiale = nom.charAt(0).toUpperCase();
   if(profil.photo){
-    return `<div class="avatar ${classe}"><img src="${profil.photo}" alt="${nom}"></div>`;
+    return `<div class="avatar ${classe}"><img src="${profil.photo}" alt="${nom}" onerror="this.style.display='none'; this.parentElement.textContent='${initiale}';"></div>`;
   }
   return `<div class="avatar ${classe}">${initiale}</div>`;
 }
@@ -845,12 +868,25 @@ function declencherChangementPhoto(){
   document.getElementById("input-photo").click();
 }
 
-function ouvrirEditionProfil(){
+function basculerEditionProfil(){
+  editionProfilOuverte = !editionProfilOuverte;
+  rendre();
+}
+
+function changerThemeProfil(){
+  if(!personneActive) return;
   const themeCourant = (obtenirProfil(personneActive).theme || "bleu");
   const themes = Object.keys(THEMES);
   const indexCourant = themes.indexOf(themeCourant);
   const prochainTheme = themes[(indexCourant + 1) % themes.length];
+  editionProfilOuverte = false;
   choisirTheme(prochainTheme);
+}
+
+function choisirPhotoProfil(){
+  if(!personneActive) return;
+  editionProfilOuverte = false;
+  rendre();
   declencherChangementPhoto();
 }
 
@@ -1078,7 +1114,13 @@ function vueTaches(){
     <button class="bouton-aujourdhui" onclick="allerAujourdhui()">Revenir à aujourd'hui</button>
 
     ${contenuPrincipal}
-    <button class="bouton-edition-profil" onclick="ouvrirEditionProfil()" title="Modifier le thème et la photo de profil">✎</button>
+    <div class="conteneur-edition-profil">
+      <div class="options-edition-profil" ${editionProfilOuverte ? '' : 'style="display:none;"'}>
+        <button class="bouton-option-edition" onclick="changerThemeProfil()" title="Changer de thème">🎨</button>
+        <button class="bouton-option-edition" onclick="choisirPhotoProfil()" title="Changer d'image">🖼️</button>
+      </div>
+      <button class="bouton-edition-profil ${editionProfilOuverte ? 'ouvert' : ''}" onclick="basculerEditionProfil()" title="${editionProfilOuverte ? 'Fermer les options' : 'Modifier le profil'}">${editionProfilOuverte ? '✕' : '✎'}</button>
+    </div>
   `;
 }
 
