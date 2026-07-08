@@ -767,6 +767,10 @@ function allerAujourdhui(){
 let enTraitement = new Set(); // empêche un double-clic d'envoyer 2x la même action
 let actionEnAttente = null;   // {personneId, index, texte} en attente de confirmation dans la modale
 
+function toggleTache(personneId, index){
+  demanderConfirmation(personneId, index);
+}
+
 function demanderConfirmation(personneId, index){
   const jour = nomJour(dateAffichee);
   const texte = TACHES[personneId][jour][index];
