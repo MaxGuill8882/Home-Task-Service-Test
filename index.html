@@ -10,6 +10,7 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -97,9 +98,90 @@ async function chargerConfigPersonnes(){
     TACHES[id] = data.taches || {};
   });
 }
+
+/* ============================================================
+   5) THÈMES DE COULEUR DISPONIBLES
+   Chaque personne peut choisir l'un de ces thèmes ; le choix est
+   sauvegardé dans Firebase et s'applique peu importe l'appareil.
+   Facile d'ajouter un thème : copie un bloc et change les couleurs.
+   ============================================================ */
+const THEMES = {
+  bleu: {
+    label: "Bleu",
+    swatch: "#3B82F6",
+    variables: {
+      "--fond": "#E9EDF3", "--texte": "#2B3444", "--texte-doux": "#8A93A6",
+      "--accent": "#3B82F6", "--accent-doux": "#DCE9FF",
+      "--valide": "#34C77B", "--danger": "#F0645A",
+      "--ombre-c1": "#c3cad6", "--ombre-c2": "#ffffff"
+    }
+  },
+  vert: {
+    label: "Nature",
+    swatch: "#4C9A6A",
+    variables: {
+      "--fond": "#E8EEE8", "--texte": "#2C3A2F", "--texte-doux": "#7E9086",
+      "--accent": "#4C9A6A", "--accent-doux": "#D9EEDF",
+      "--valide": "#34C77B", "--danger": "#E0685B",
+      "--ombre-c1": "#c2ccc4", "--ombre-c2": "#ffffff"
+    }
+  },
+  rose: {
+    label: "Douceur",
+    swatch: "#E0708C",
+    variables: {
+      "--fond": "#F3E9ED", "--texte": "#3A2B33", "--texte-doux": "#A6858F",
+      "--accent": "#E0708C", "--accent-doux": "#FBDCE4",
+      "--valide": "#34C77B", "--danger": "#D9504F",
+      "--ombre-c1": "#d6c3ca", "--ombre-c2": "#ffffff"
+    }
+  },
+  soleil: {
+    label: "Soleil",
+    swatch: "#E0A030",
+    variables: {
+      "--fond": "#F3EEE3", "--texte": "#3A3226", "--texte-doux": "#A69880",
+      "--accent": "#E0A030", "--accent-doux": "#FBEBCF",
+      "--valide": "#34C77B", "--danger": "#E0645A",
+      "--ombre-c1": "#d6cdb8", "--ombre-c2": "#ffffff"
+    }
+  },
+  nuit: {
+    label: "Nuit",
+    swatch: "#6C8CFF",
+    variables: {
+      "--fond": "#242832", "--texte": "#E9EDF3", "--texte-doux": "#8D93A3",
+      "--accent": "#6C8CFF", "--accent-doux": "#333B52",
+      "--valide": "#3ED890", "--danger": "#FF7A70",
+      "--ombre-c1": "#1a1d24", "--ombre-c2": "#2e333f"
+    }
+  }
+};
+
+function appliquerTheme(themeId){
+  const theme = THEMES[themeId] || THEMES.bleu;
+  const racine = document.documentElement;
+  Object.entries(theme.variables).forEach(([variable, valeur])=>{
+    racine.style.setProperty(variable, valeur);
+  });
+}
 </script>
 
 <div id="app"></div>
+
+<div id="fond-modale" class="fond-modale" style="display:none;">
+  <div class="boite-modale">
+    <div class="icone-modale">✅</div>
+    <p id="texte-modale"></p>
+    <div class="boutons-modale">
+      <button class="btn-annuler" onclick="annulerAction()">Annuler</button>
+      <button class="btn-confirmer" onclick="confirmerAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="input-photo" accept="image/*" capture="environment" style="display:none;" onchange="gererFichierPhoto(event)">
+
 
 <style>
 :root{
@@ -110,10 +192,12 @@ async function chargerConfigPersonnes(){
   --accent-doux:#DCE9FF;
   --valide:#34C77B;
   --danger:#F0645A;
+  --ombre-c1:#c3cad6;
+  --ombre-c2:#ffffff;
   --radius:18px;
-  --ombre-ext: 8px 8px 16px #c3cad6, -8px -8px 16px #ffffff;
-  --ombre-ext-sm: 4px 4px 10px #c3cad6, -4px -4px 10px #ffffff;
-  --ombre-int: inset 4px 4px 8px #c3cad6, inset -4px -4px 8px #ffffff;
+  --ombre-ext: 8px 8px 16px var(--ombre-c1), -8px -8px 16px var(--ombre-c2);
+  --ombre-ext-sm: 4px 4px 10px var(--ombre-c1), -4px -4px 10px var(--ombre-c2);
+  --ombre-int: inset 4px 4px 8px var(--ombre-c1), inset -4px -4px 8px var(--ombre-c2);
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -390,6 +474,131 @@ h1,h2,h3{
   font-family:'Poppins',sans-serif;
 }
 .bouton-valider:active{ opacity:0.85; }
+.bouton-decocher{
+  background:transparent;
+  color:var(--texte-doux);
+  border:2px solid var(--ombre-c1);
+  padding:6px 12px;
+  border-radius:10px;
+  font-size:0.72rem;
+  cursor:pointer;
+  font-weight:600;
+  font-family:'Poppins',sans-serif;
+  margin-left:6px;
+}
+
+/* --- Avatars --- */
+.avatar{
+  flex-shrink:0;
+  border-radius:50%;
+  overflow:hidden;
+  background:var(--accent-doux);
+  color:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;
+  font-family:'Poppins',sans-serif;
+}
+.avatar img{ width:100%; height:100%; object-fit:cover; }
+.avatar-nom{
+  width:44px;height:44px;font-size:1rem;
+}
+.carte-nom{ position:relative; }
+.carte-nom .avatar-nom{ margin:0 auto 10px; }
+.entete-personne{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.avatar-grand{
+  width:56px;height:56px;font-size:1.3rem;
+  cursor:pointer;
+  position:relative;
+}
+.avatar-grand::after{
+  content:"📷";
+  position:absolute;
+  bottom:-2px; right:-2px;
+  background:var(--fond);
+  box-shadow:var(--ombre-ext-sm);
+  border-radius:50%;
+  width:20px;height:20px;
+  font-size:0.65rem;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* --- Sélecteur de thème --- */
+.selecteur-theme{
+  display:flex;
+  gap:12px;
+  margin-bottom:22px;
+  justify-content:center;
+}
+.pastille-theme{
+  width:32px;height:32px;
+  border-radius:50%;
+  cursor:pointer;
+  box-shadow:var(--ombre-ext-sm);
+  border:2px solid transparent;
+  transition:transform .15s ease;
+}
+.pastille-theme.actif{
+  border-color:var(--texte);
+  transform:scale(1.12);
+}
+
+/* --- Modale de confirmation --- */
+.fond-modale{
+  position:fixed; inset:0;
+  background:rgba(20,22,28,0.45);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000;
+  padding:20px;
+}
+.boite-modale{
+  background:var(--fond);
+  border-radius:var(--radius);
+  box-shadow:var(--ombre-ext);
+  padding:28px 24px;
+  max-width:340px;
+  width:100%;
+  text-align:center;
+}
+.boite-modale .icone-modale{
+  font-size:2rem;
+  margin-bottom:10px;
+}
+.boite-modale p{
+  margin:0 0 22px;
+  font-size:0.95rem;
+  color:var(--texte);
+  line-height:1.5;
+}
+.boite-modale p strong{ color:var(--accent); }
+.boutons-modale{
+  display:flex;
+  gap:12px;
+}
+.boutons-modale button{
+  flex:1;
+  padding:12px 0;
+  border:none;
+  border-radius:12px;
+  font-family:'Poppins',sans-serif;
+  font-size:0.85rem;
+  font-weight:600;
+  cursor:pointer;
+}
+.btn-annuler{
+  background:var(--fond);
+  color:var(--texte-doux);
+  box-shadow:var(--ombre-ext-sm);
+}
+.btn-annuler:active{ box-shadow:var(--ombre-int); }
+.btn-confirmer{
+  background:var(--accent);
+  color:#fff;
+}
+.btn-confirmer:active{ opacity:0.85; }
 </style>
 
 <script>
@@ -398,13 +607,14 @@ h1,h2,h3{
    ============================================================ */
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const storage = firebase.storage();
 emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const DOC_REF = db.collection("carnet_maison").doc("etat_taches");
 
 const JOURS_SEMAINE = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
 
-let etatCourant = { completions: {} }; // synchronisé avec Firestore
+let etatCourant = { completions: {}, profils: {} }; // synchronisé avec Firestore
 let personneActive = null;             // clé de PERSONNES
 let pinSaisi = "";
 let dateAffichee = new Date();
@@ -414,8 +624,10 @@ let vueActuelle = "login"; // login | pin | taches
 DOC_REF.onSnapshot((snap) => {
   if (snap.exists) {
     etatCourant = snap.data();
+    if(!etatCourant.completions) etatCourant.completions = {};
+    if(!etatCourant.profils) etatCourant.profils = {};
   } else {
-    etatCourant = { completions: {} };
+    etatCourant = { completions: {}, profils: {} };
     DOC_REF.set(etatCourant);
   }
   rendre();
@@ -440,6 +652,21 @@ function cleCompletion(personneId, dateCle, index){
   return `${dateCle}_${personneId}_${index}`;
 }
 
+/* ---- Profils (thème + photo) ---- */
+function obtenirProfil(personneId){
+  return (etatCourant.profils && etatCourant.profils[personneId]) || {};
+}
+
+function rendreAvatar(personneId, classe){
+  const profil = obtenirProfil(personneId);
+  const nom = PERSONNES[personneId] ? PERSONNES[personneId].nom : "?";
+  const initiale = nom.charAt(0).toUpperCase();
+  if(profil.photo){
+    return `<div class="avatar ${classe}"><img src="${profil.photo}" alt="${nom}"></div>`;
+  }
+  return `<div class="avatar ${classe}">${initiale}</div>`;
+}
+
 /* ============================================================
    ACTIONS
    ============================================================ */
@@ -454,6 +681,7 @@ function retourLogin(){
   personneActive = null;
   pinSaisi = "";
   vueActuelle = "login";
+  appliquerTheme("bleu");
   rendre();
 }
 
@@ -464,6 +692,7 @@ function saisirChiffre(chiffre){
     if(pinSaisi === PERSONNES[personneActive].pin){
       vueActuelle = "taches";
       dateAffichee = new Date();
+      appliquerTheme(obtenirProfil(personneActive).theme || "bleu");
       setTimeout(rendre, 120);
     } else {
       setTimeout(()=>{ pinSaisi=""; rendre(); document.getElementById("erreur-pin").textContent="Code incorrect, réessaie."; }, 250);
@@ -489,38 +718,51 @@ function allerAujourdhui(){
 }
 
 let enTraitement = new Set(); // empêche un double-clic d'envoyer 2x la même action
+let actionEnAttente = null;   // {personneId, index, texte} en attente de confirmation dans la modale
 
-async function toggleTache(personneId, index){
+function demanderConfirmation(personneId, index){
+  const jour = nomJour(dateAffichee);
+  const texte = TACHES[personneId][jour][index];
+  actionEnAttente = { personneId, index, texte };
+  document.getElementById("texte-modale").innerHTML =
+    `Confirmer que la tâche <strong>${texte}</strong> est terminée ?`;
+  document.getElementById("fond-modale").style.display = "flex";
+}
+
+function annulerAction(){
+  actionEnAttente = null;
+  document.getElementById("fond-modale").style.display = "none";
+}
+
+function confirmerAction(){
+  if(!actionEnAttente) return;
+  const { personneId, index } = actionEnAttente;
+  document.getElementById("fond-modale").style.display = "none";
+  actionEnAttente = null;
+  marquerTacheFaite(personneId, index);
+}
+
+async function marquerTacheFaite(personneId, index){
   const dateCle = formatDateCle(dateAffichee);
   const cle = cleCompletion(personneId, dateCle, index);
 
-  // Verrou anti double-clic / double-tap : ignore si un clic est déjà en cours sur cette tâche
+  // Verrou anti double-clic / double-tap
   if(enTraitement.has(cle)) return;
   enTraitement.add(cle);
 
-  const existant = etatCourant.completions[cle];
   const nouvelEtat = { ...etatCourant, completions: { ...etatCourant.completions } };
-  let vientDEtreCoche = false;
+  nouvelEtat.completions[cle] = {
+    fait:true,
+    valide:false,
+    par: PERSONNES[personneId].nom,
+    horodatage: new Date().toISOString()
+  };
 
-  if(existant && existant.fait){
-    delete nouvelEtat.completions[cle];
-  } else {
-    nouvelEtat.completions[cle] = {
-      fait:true,
-      valide:false,
-      par: PERSONNES[personneId].nom,
-      horodatage: new Date().toISOString()
-    };
-    vientDEtreCoche = true;
-  }
-
-  // Mise à jour optimiste immédiate (locale) pour que l'UI et l'état interne
-  // reflètent le changement tout de suite, avant même la réponse de Firestore.
-  // Ça évite qu'un second clic rapide ne "revoit" l'ancien état et ne redéclenche un courriel.
+  // Mise à jour optimiste immédiate (locale)
   etatCourant = nouvelEtat;
   rendre();
 
-  if(vientDEtreCoche && PERSONNES[personneId].type === "enfant"){
+  if(PERSONNES[personneId].type === "enfant"){
     const nomTache = TACHES[personneId][nomJour(dateAffichee)][index];
     enfilerCourriels(PERSONNES[personneId].nom, nomTache);
   }
@@ -535,6 +777,19 @@ async function toggleTache(personneId, index){
   }
 }
 
+/* ---- Réservé aux parents : décocher une tâche (annuler une complétion) ---- */
+async function decocherTache(cle){
+  const nouvelEtat = { ...etatCourant, completions: { ...etatCourant.completions } };
+  delete nouvelEtat.completions[cle];
+  etatCourant = nouvelEtat;
+  rendre();
+  try{
+    await DOC_REF.set(nouvelEtat);
+  }catch(e){
+    console.error("Erreur d'écriture Firestore:", e);
+  }
+}
+
 async function validerTache(cle){
   const nouvelEtat = { ...etatCourant, completions: { ...etatCourant.completions } };
   if(nouvelEtat.completions[cle]){
@@ -544,6 +799,73 @@ async function validerTache(cle){
     }catch(e){
       console.error(e);
     }
+  }
+}
+
+/* ---- Choix de thème ---- */
+async function choisirTheme(themeId){
+  appliquerTheme(themeId);
+  const nouvelEtat = { ...etatCourant, profils: { ...etatCourant.profils } };
+  nouvelEtat.profils[personneActive] = { ...obtenirProfil(personneActive), theme: themeId };
+  etatCourant = nouvelEtat;
+  rendre();
+  try{
+    await DOC_REF.set(nouvelEtat);
+  }catch(e){
+    console.error("Erreur de sauvegarde du thème:", e);
+  }
+}
+
+/* ---- Photo de profil (prise ou choisie depuis la galerie) ---- */
+function declencherChangementPhoto(){
+  document.getElementById("input-photo").click();
+}
+
+function redimensionnerImage(fichier, tailleMax){
+  return new Promise((resolve, reject)=>{
+    const lecteur = new FileReader();
+    lecteur.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let { width, height } = img;
+        if(width > height){
+          if(width > tailleMax){ height *= tailleMax/width; width = tailleMax; }
+        } else {
+          if(height > tailleMax){ width *= tailleMax/height; height = tailleMax; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob)=> resolve(blob), "image/jpeg", 0.85);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    lecteur.onerror = reject;
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
+async function gererFichierPhoto(event){
+  const fichier = event.target.files[0];
+  event.target.value = ""; // permet de reprendre la même photo une prochaine fois
+  if(!fichier || !personneActive) return;
+
+  try{
+    const blob = await redimensionnerImage(fichier, 400);
+    const ref = storage.ref().child(`profils/${personneActive}.jpg`);
+    await ref.put(blob);
+    const url = await ref.getDownloadURL();
+
+    const nouvelEtat = { ...etatCourant, profils: { ...etatCourant.profils } };
+    nouvelEtat.profils[personneActive] = { ...obtenirProfil(personneActive), photo: url };
+    etatCourant = nouvelEtat;
+    rendre();
+    await DOC_REF.set(nouvelEtat);
+  }catch(e){
+    console.error("Erreur d'upload de la photo:", e);
+    alert("Impossible d'envoyer la photo. Vérifie ta connexion internet.");
   }
 }
 
@@ -606,7 +928,10 @@ function rendre(){
 
 function vueLogin(){
   const cartes = Object.entries(PERSONNES).map(([id,p])=>
-    `<div class="carte-nom" onclick="ouvrirEcranPin('${id}')">${p.nom}</div>`
+    `<div class="carte-nom" onclick="ouvrirEcranPin('${id}')">
+       ${rendreAvatar(id, 'avatar-nom')}
+       ${p.nom}
+     </div>`
   ).join("");
 
   return `
