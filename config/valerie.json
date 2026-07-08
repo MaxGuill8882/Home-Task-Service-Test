@@ -3,12 +3,12 @@
   "type": "enfant",
   "pin": "1111",
   "taches": {
-    "lundi": ["Faire son lit", "Débarrasser la table"],
-    "mardi": ["Faire son lit", "Débarrasser la table"],
-    "mercredi": ["Faire son lit", "Débarrasser la table"],
-    "jeudi": ["Faire son lit", "Débarrasser la table"],
-    "vendredi": ["Faire son lit", "Débarrasser la table"],
+    "lundi": ["Eau et bouffe Salon (Matin)", "Soupe pour Furets","Ranger sa chambre"],
+    "mardi": ["Eau et bouffe Salon (Matin)", "Soupe pour Furets"],
+    "mercredi": ["Eau et bouffe Salon (Matin)", "Soupe pour Furets","Aide Cuisinière Diner"],
+    "jeudi": ["Eau et bouffe Salon (Matin)", "Soupe pour Furets","Lavage"],
+    "vendredi": ["Eau et bouffe Salon (Matin)", "Soupe pour Furets","Nettoyer salle d'eau","Ranger entrée et arrière"],
     "samedi": [],
-    "dimanche": ["Débarrasser la table"]
+    "dimanche": []
   }
 }
