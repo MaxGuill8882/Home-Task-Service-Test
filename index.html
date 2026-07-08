@@ -546,6 +546,30 @@ h1,h2,h3{
   transform:scale(1.12);
 }
 
+/* --- Bouton d'édition profil --- */
+.bouton-edition-profil{
+  position:fixed;
+  right:22px;
+  bottom:22px;
+  width:56px;
+  height:56px;
+  border:none;
+  border-radius:50%;
+  background:var(--accent);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.2rem;
+  cursor:pointer;
+  box-shadow:var(--ombre-ext);
+  z-index:900;
+}
+.bouton-edition-profil:active{
+  box-shadow:var(--ombre-int);
+  transform:translateY(1px);
+}
+
 /* --- Modale de confirmation --- */
 .fond-modale{
   position:fixed; inset:0;
@@ -821,6 +845,15 @@ function declencherChangementPhoto(){
   document.getElementById("input-photo").click();
 }
 
+function ouvrirEditionProfil(){
+  const themeCourant = (obtenirProfil(personneActive).theme || "bleu");
+  const themes = Object.keys(THEMES);
+  const indexCourant = themes.indexOf(themeCourant);
+  const prochainTheme = themes[(indexCourant + 1) % themes.length];
+  choisirTheme(prochainTheme);
+  declencherChangementPhoto();
+}
+
 function redimensionnerImage(fichier, tailleMax){
   return new Promise((resolve, reject)=>{
     const lecteur = new FileReader();
@@ -1045,6 +1078,7 @@ function vueTaches(){
     <button class="bouton-aujourdhui" onclick="allerAujourdhui()">Revenir à aujourd'hui</button>
 
     ${contenuPrincipal}
+    <button class="bouton-edition-profil" onclick="ouvrirEditionProfil()" title="Modifier le thème et la photo de profil">✎</button>
   `;
 }
 
