@@ -3,12 +3,12 @@
   "type": "enfant",
   "pin": "1111",
   "taches": {
-    "lundi": ["Faire son lit", "Sortir les poubelles"],
-    "mardi": ["Faire son lit", "Vider le lave-vaisselle"],
-    "mercredi": ["Faire son lit", "Ranger sa chambre"],
-    "jeudi": ["Faire son lit", "Sortir le recyclage"],
-    "vendredi": ["Faire son lit", "Passer l'aspirateur au salon"],
-    "samedi": ["Ranger sa chambre"],
+    "lundi": ["Faire sa Chambre"],
+    "mardi": [],
+    "mercredi": [],
+    "jeudi": ["Aide Cuisinier Souper"],
+    "vendredi": ["Laver comptoir salle de bain","Ranger table du salon","Lavage de linge"],
+    "samedi": [],
     "dimanche": []
   }
 }
