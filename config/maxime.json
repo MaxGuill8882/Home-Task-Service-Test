@@ -3,12 +3,12 @@
   "type": "enfant",
   "pin": "1111",
   "taches": {
-    "lundi": ["Faire sa Chambre"],
-    "mardi": [],
-    "mercredi": [],
-    "jeudi": ["Aide Cuisinier Souper"],
-    "vendredi": ["Laver comptoir salle de bain","Ranger table du salon","Lavage de linge"],
-    "samedi": [],
-    "dimanche": []
+    "lundi": ["Faire sa Chambre","Vider la litière cage (Soir)"],
+    "mardi": ["Vider la litière cage (Soir)"],
+    "mercredi": ["Vider la litière cage (Soir)"],
+    "jeudi": ["Vider la litière cage (Soir)","Aide Cuisinier Souper"],
+    "vendredi": ["Vider la litière cage (Soir)","Laver comptoir salle de bain","Ranger table du salon","Lavage de linge"],
+    "samedi": ["Vider la litière cage (Soir)"],
+    "dimanche": ["Vider la litière cage (Soir)"]
   }
 }
