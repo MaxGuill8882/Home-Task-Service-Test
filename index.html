@@ -10,7 +10,6 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -49,6 +48,26 @@ const EMAILJS_SERVICE_ID  = "service_rtjo66w";
 const EMAILJS_TEMPLATE_ID = "template_mx01xg9";
 
 const PARENT_EMAILS = ["michaudlaurence@hotmail.com", "martinguillemette622@gmail.com"];
+
+/* ============================================================
+   2bis) CONFIGURATION GITHUB — pour stocker les photos de profil
+   directement dans ton repo GitHub.
+
+   ⚠️ Le jeton ci-dessous sera visible par n'importe qui consultant
+   le code source de ta page. Utilise UNIQUEMENT un jeton
+   "fine-grained" limité à ce seul repo avec la permission
+   "Contents: Read and write" (rien d'autre). Voir les instructions
+   fournies pour le créer sur github.com/settings/personal-access-tokens/new
+
+   GITHUB_OWNER  : ton nom d'utilisateur ou organisation GitHub
+   GITHUB_REPO   : le nom du repo (ex: "allo")
+   GITHUB_BRANCH : la branche utilisée par GitHub Pages (souvent "main")
+   GITHUB_TOKEN  : le jeton fine-grained créé plus haut
+   ============================================================ */
+const GITHUB_OWNER  = "MaxGuill8882";
+const GITHUB_REPO   = "Home-Task-Service-Test";
+const GITHUB_BRANCH = "main";
+const GITHUB_TOKEN  = "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";
 
 /* ============================================================
    3) LES PERSONNES ET LEURS TÂCHES
@@ -722,7 +741,6 @@ h1,h2,h3{
    ============================================================ */
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const storage = firebase.storage();
 emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const DOC_REF = db.collection("carnet_maison").doc("etat_taches");
@@ -1063,6 +1081,59 @@ function redimensionnerImage(fichier, tailleMax){
   });
 }
 
+/* ---- Convertit un Blob en base64 pur (sans le préfixe data:...) ---- */
+function blobEnBase64(blob){
+  return new Promise((resolve, reject)=>{
+    const lecteur = new FileReader();
+    lecteur.onload = () => resolve(lecteur.result.split(",")[1]);
+    lecteur.onerror = reject;
+    lecteur.readAsDataURL(blob);
+  });
+}
+
+/* ---- Envoie la photo dans le repo GitHub (dossier photos-profil/) ---- */
+async function televerserPhotoGitHub(blob, personneId){
+  const chemin = `photos-profil/${personneId}.jpg`;
+  const urlApi = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${chemin}`;
+  const enTetes = {
+    "Authorization": `Bearer ${GITHUB_TOKEN}`,
+    "Content-Type": "application/json",
+    "Accept": "application/vnd.github+json"
+  };
+
+  // Si le fichier existe déjà, GitHub exige son "sha" actuel pour le remplacer
+  let sha = null;
+  try{
+    const resExistant = await fetch(`${urlApi}?ref=${GITHUB_BRANCH}`, { headers: enTetes });
+    if(resExistant.ok){
+      const donneesExistantes = await resExistant.json();
+      sha = donneesExistantes.sha;
+    }
+  }catch(e){ /* le fichier n'existe probablement pas encore, ce n'est pas grave */ }
+
+  const contenuBase64 = await blobEnBase64(blob);
+  const corps = {
+    message: `Photo de profil de ${personneId}`,
+    content: contenuBase64,
+    branch: GITHUB_BRANCH
+  };
+  if(sha) corps.sha = sha;
+
+  const resEnvoi = await fetch(urlApi, {
+    method: "PUT",
+    headers: enTetes,
+    body: JSON.stringify(corps)
+  });
+
+  if(!resEnvoi.ok){
+    const erreur = await resEnvoi.text();
+    throw new Error(`Échec de l'envoi vers GitHub (${resEnvoi.status}) : ${erreur}`);
+  }
+
+  // Cache-busting (?v=...) pour forcer le navigateur à recharger la nouvelle image
+  return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${chemin}?v=${Date.now()}`;
+}
+
 async function gererFichierPhoto(event){
   const fichier = event.target.files[0];
   event.target.value = ""; // permet de reprendre la même photo une prochaine fois
@@ -1070,23 +1141,16 @@ async function gererFichierPhoto(event){
 
   try{
     const blob = await redimensionnerImage(fichier, 400);
-    const cheminPhoto = `profils/${personneActive}.jpg`;
-    const ref = storage.ref().child(cheminPhoto);
-    await ref.put(blob, { contentType: "image/jpeg" });
-    const url = await ref.getDownloadURL();
+    const url = await televerserPhotoGitHub(blob, personneActive);
 
     const nouvelEtat = { ...etatCourant, profils: { ...etatCourant.profils } };
-    nouvelEtat.profils[personneActive] = {
-      ...obtenirProfil(personneActive),
-      photo: url,
-      photoPath: cheminPhoto
-    };
+    nouvelEtat.profils[personneActive] = { ...obtenirProfil(personneActive), photo: url };
     etatCourant = nouvelEtat;
     rendre();
     await DOC_REF.set(nouvelEtat);
   }catch(e){
     console.error("Erreur d'upload de la photo:", e);
-    alert("Impossible d'envoyer la photo. Vérifie ta connexion internet.");
+    alert("Impossible d'envoyer la photo. Vérifie ta connexion internet et le jeton GitHub.");
   }
 }
 
