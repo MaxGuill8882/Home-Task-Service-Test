@@ -10,6 +10,7 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -56,13 +57,12 @@ const PARENT_EMAILS = ["michaudlaurence@hotmail.com", "martinguillemette622@gmai
    ⚠️ Le jeton ci-dessous sera visible par n'importe qui consultant
    le code source de ta page. Utilise UNIQUEMENT un jeton
    "fine-grained" limité à ce seul repo avec la permission
-   "Contents: Read and write" (rien d'autre). Voir les instructions
-   fournies pour le créer sur github.com/settings/personal-access-tokens/new
+   "Contents: Read and write" (rien d'autre).
 
-   GITHUB_OWNER  : ton nom d'utilisateur ou organisation GitHub
-   GITHUB_REPO   : le nom du repo (ex: "allo")
-   GITHUB_BRANCH : la branche utilisée par GitHub Pages (souvent "main")
-   GITHUB_TOKEN  : le jeton fine-grained créé plus haut
+   GITHUB_OWNER  : ton nom d'utilisateur GitHub
+   GITHUB_REPO   : le nom du repo
+   GITHUB_BRANCH : la branche utilisée par GitHub Pages
+   GITHUB_TOKEN  : le jeton fine-grained
    ============================================================ */
 const GITHUB_OWNER  = "MaxGuill8882";
 const GITHUB_REPO   = "Home-Task-Service-Test";
@@ -113,7 +113,7 @@ async function chargerConfigPersonnes(){
 
   resultats.forEach(({ id, data }) => {
     if(!data) return;
-    PERSONNES[id] = { nom: data.nom, type: data.type, pin: data.pin, email: data.email || null };
+    PERSONNES[id] = { nom: data.nom, type: data.type, pin: data.pin };
     TACHES[id] = data.taches || {};
   });
 }
@@ -184,17 +184,6 @@ function appliquerTheme(themeId){
     racine.style.setProperty(variable, valeur);
   });
 }
-
-/* ============================================================
-   ICÔNES SVG (remplacent les emojis dans le menu de personnalisation)
-   ============================================================ */
-const ICONES = {
-  crayon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
-  fermer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>`,
-  image: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>`,
-  camera: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
-  cloche: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`
-};
 </script>
 
 <div id="app"></div>
@@ -211,11 +200,6 @@ const ICONES = {
 </div>
 
 <input type="file" id="input-photo" accept="image/*" capture="environment" style="display:none;" onchange="gererFichierPhoto(event)">
-
-<div id="fond-modale-notifications" class="fond-modale" style="display:none;">
-  <div class="boite-modale" id="boite-notifications" data-mode-choisi="immediat">
-  </div>
-</div>
 
 
 <style>
@@ -432,10 +416,6 @@ h1,h2,h3{
   padding:14px 14px;
   cursor:pointer;
 }
-.tache:has(.case.fait),
-.tache:has(.case.valide){
-  cursor:default;
-}
 .case{
   flex-shrink:0;
   width:26px;height:26px;
@@ -553,17 +533,17 @@ h1,h2,h3{
   cursor:pointer;
   position:relative;
 }
-.badge-camera{
+.avatar-grand::after{
+  content:"📷";
   position:absolute;
   bottom:-2px; right:-2px;
   background:var(--fond);
   box-shadow:var(--ombre-ext-sm);
   border-radius:50%;
-  width:22px;height:22px;
+  width:20px;height:20px;
+  font-size:0.65rem;
   display:flex;align-items:center;justify-content:center;
-  color:var(--accent);
 }
-.badge-camera svg{ width:12px;height:12px; }
 
 /* --- Sélecteur de thème --- */
 .selecteur-theme{
@@ -630,11 +610,6 @@ h1,h2,h3{
 .bouton-edition-profil.ouvert{
   background:var(--danger);
 }
-.bouton-option-edition svg,
-.bouton-edition-profil svg{
-  width:22px;
-  height:22px;
-}
 
 /* --- Modale de confirmation --- */
 .fond-modale{
@@ -689,50 +664,6 @@ h1,h2,h3{
   color:#fff;
 }
 .btn-confirmer:active{ opacity:0.85; }
-
-/* --- Panneau de notifications (parents) --- */
-.options-notif{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.option-notif{
-  padding:12px 14px;
-  border-radius:12px;
-  border:2px solid var(--ombre-c1);
-  background:var(--fond);
-  color:var(--texte);
-  font-family:'Poppins',sans-serif;
-  font-size:0.85rem;
-  font-weight:500;
-  text-align:left;
-  cursor:pointer;
-}
-.option-notif.actif{
-  border-color:var(--accent);
-  color:var(--accent);
-  font-weight:700;
-  box-shadow:var(--ombre-int);
-}
-.champ-heure{
-  width:100%;
-  padding:10px 12px;
-  border-radius:10px;
-  border:2px solid var(--ombre-c1);
-  background:var(--fond);
-  color:var(--texte);
-  font-family:'Poppins',sans-serif;
-  font-size:0.9rem;
-}
-
-/* --- Menu de personnalisation : rangée de thèmes dans le FAB --- */
-.options-edition-profil .selecteur-theme{
-  margin-bottom:0;
-  background:var(--fond);
-  box-shadow:var(--ombre-ext);
-  border-radius:20px;
-  padding:10px 14px;
-}
 </style>
 
 <script>
@@ -741,6 +672,7 @@ h1,h2,h3{
    ============================================================ */
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const storage = firebase.storage();
 emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const DOC_REF = db.collection("carnet_maison").doc("etat_taches");
@@ -765,7 +697,6 @@ DOC_REF.onSnapshot((snap) => {
     DOC_REF.set(etatCourant);
   }
   rendre();
-  verifierDigestQuotidien();
 }, (err) => {
   console.error("Erreur Firestore :", err);
 });
@@ -800,14 +731,6 @@ function rendreAvatar(personneId, classe){
     return `<div class="avatar ${classe}"><img src="${profil.photo}" alt="${nom}" onerror="this.style.display='none'; this.parentElement.textContent='${initiale}';"></div>`;
   }
   return `<div class="avatar ${classe}">${initiale}</div>`;
-}
-
-function rendreAvatarEditable(personneId){
-  const interieur = rendreAvatar(personneId, "avatar-grand").replace('class="avatar avatar-grand"', 'class="avatar avatar-grand" onclick="declencherChangementPhoto()"');
-  return `<div style="position:relative;display:inline-block;">
-      ${interieur}
-      <div class="badge-camera">${ICONES.camera}</div>
-    </div>`;
 }
 
 /* ============================================================
@@ -911,7 +834,7 @@ async function marquerTacheFaite(personneId, index){
 
   if(PERSONNES[personneId].type === "enfant"){
     const nomTache = TACHES[personneId][nomJour(dateAffichee)][index];
-    notifierParents(PERSONNES[personneId].nom, nomTache);
+    enfilerCourriels(PERSONNES[personneId].nom, nomTache);
   }
 
   try{
@@ -963,83 +886,6 @@ async function choisirTheme(themeId){
   }
 }
 
-/* ============================================================
-   PRÉFÉRENCES DE NOTIFICATION (parents seulement)
-   Chaque parent choisit : courriel à chaque tâche complétée (immédiat)
-   ou un seul résumé par jour à une heure choisie.
-   Stocké dans etatCourant.profils[id].notifications
-   ============================================================ */
-function obtenirNotifPref(personneId){
-  const profil = obtenirProfil(personneId);
-  return profil.notifications || { mode: "immediat", heure: "18:00" };
-}
-
-function construireContenuNotif(mode, heure){
-  return `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="font-size:1.05rem;margin:0;">Notifications par courriel</h3>
-      <button type="button" onclick="fermerParametresNotifications()" style="background:none;border:none;cursor:pointer;color:var(--texte-doux);width:22px;height:22px;padding:0;">${ICONES.fermer}</button>
-    </div>
-    <div class="options-notif">
-      <button type="button" class="option-notif ${mode==='immediat'?'actif':''}" onclick="choisirModeNotif('immediat')">
-        À chaque tâche complétée
-      </button>
-      <button type="button" class="option-notif ${mode==='quotidien'?'actif':''}" onclick="choisirModeNotif('quotidien')">
-        Un résumé, une fois par jour
-      </button>
-    </div>
-    <div id="champ-heure-notif" style="margin-top:14px; ${mode==='quotidien'?'':'display:none;'}">
-      <label style="font-size:0.85rem;color:var(--texte-doux);display:block;margin-bottom:6px;">Heure du résumé</label>
-      <input type="time" id="input-heure-notif" value="${heure}" class="champ-heure">
-    </div>
-    <button class="btn-confirmer" style="width:100%;margin-top:20px;" onclick="enregistrerParametresNotifications()">Enregistrer</button>
-  `;
-}
-
-function ouvrirParametresNotifications(){
-  if(!personneActive || PERSONNES[personneActive].type !== "parent") return;
-  editionProfilOuverte = false;
-  rendre();
-  const pref = obtenirNotifPref(personneActive);
-  const boite = document.getElementById("boite-notifications");
-  boite.dataset.modeChoisi = pref.mode;
-  boite.innerHTML = construireContenuNotif(pref.mode, pref.heure);
-  document.getElementById("fond-modale-notifications").style.display = "flex";
-}
-
-function choisirModeNotif(mode){
-  const boite = document.getElementById("boite-notifications");
-  const heureInput = document.getElementById("input-heure-notif");
-  const heureActuelle = (heureInput && heureInput.value) ? heureInput.value : (obtenirNotifPref(personneActive).heure || "18:00");
-  boite.dataset.modeChoisi = mode;
-  boite.innerHTML = construireContenuNotif(mode, heureActuelle);
-}
-
-function fermerParametresNotifications(){
-  document.getElementById("fond-modale-notifications").style.display = "none";
-}
-
-async function enregistrerParametresNotifications(){
-  const boite = document.getElementById("boite-notifications");
-  const modeChoisi = boite.dataset.modeChoisi || obtenirNotifPref(personneActive).mode;
-  const heureInput = document.getElementById("input-heure-notif");
-  const heureChoisie = (heureInput && heureInput.value) ? heureInput.value : "18:00";
-
-  const nouvelEtat = { ...etatCourant, profils: { ...etatCourant.profils } };
-  nouvelEtat.profils[personneActive] = {
-    ...obtenirProfil(personneActive),
-    notifications: { mode: modeChoisi, heure: heureChoisie }
-  };
-  etatCourant = nouvelEtat;
-  fermerParametresNotifications();
-  rendre();
-  try{
-    await DOC_REF.set(nouvelEtat);
-  }catch(e){
-    console.error("Erreur de sauvegarde des préférences de notification:", e);
-  }
-}
-
 /* ---- Photo de profil (prise ou choisie depuis la galerie) ---- */
 function declencherChangementPhoto(){
   document.getElementById("input-photo").click();
@@ -1050,9 +896,21 @@ function basculerEditionProfil(){
   rendre();
 }
 
-/* Choisir un thème depuis le menu ne ferme plus le menu (permet de comparer) */
-function choisirThemeMenu(themeId){
-  choisirTheme(themeId);
+function changerThemeProfil(){
+  if(!personneActive) return;
+  const themeCourant = (obtenirProfil(personneActive).theme || "bleu");
+  const themes = Object.keys(THEMES);
+  const indexCourant = themes.indexOf(themeCourant);
+  const prochainTheme = themes[(indexCourant + 1) % themes.length];
+  editionProfilOuverte = false;
+  choisirTheme(prochainTheme);
+}
+
+function choisirPhotoProfil(){
+  if(!personneActive) return;
+  editionProfilOuverte = false;
+  rendre();
+  declencherChangementPhoto();
 }
 
 function redimensionnerImage(fichier, tailleMax){
@@ -1081,59 +939,6 @@ function redimensionnerImage(fichier, tailleMax){
   });
 }
 
-/* ---- Convertit un Blob en base64 pur (sans le préfixe data:...) ---- */
-function blobEnBase64(blob){
-  return new Promise((resolve, reject)=>{
-    const lecteur = new FileReader();
-    lecteur.onload = () => resolve(lecteur.result.split(",")[1]);
-    lecteur.onerror = reject;
-    lecteur.readAsDataURL(blob);
-  });
-}
-
-/* ---- Envoie la photo dans le repo GitHub (dossier photos-profil/) ---- */
-async function televerserPhotoGitHub(blob, personneId){
-  const chemin = `photos-profil/${personneId}.jpg`;
-  const urlApi = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${chemin}`;
-  const enTetes = {
-    "Authorization": `Bearer ${GITHUB_TOKEN}`,
-    "Content-Type": "application/json",
-    "Accept": "application/vnd.github+json"
-  };
-
-  // Si le fichier existe déjà, GitHub exige son "sha" actuel pour le remplacer
-  let sha = null;
-  try{
-    const resExistant = await fetch(`${urlApi}?ref=${GITHUB_BRANCH}`, { headers: enTetes });
-    if(resExistant.ok){
-      const donneesExistantes = await resExistant.json();
-      sha = donneesExistantes.sha;
-    }
-  }catch(e){ /* le fichier n'existe probablement pas encore, ce n'est pas grave */ }
-
-  const contenuBase64 = await blobEnBase64(blob);
-  const corps = {
-    message: `Photo de profil de ${personneId}`,
-    content: contenuBase64,
-    branch: GITHUB_BRANCH
-  };
-  if(sha) corps.sha = sha;
-
-  const resEnvoi = await fetch(urlApi, {
-    method: "PUT",
-    headers: enTetes,
-    body: JSON.stringify(corps)
-  });
-
-  if(!resEnvoi.ok){
-    const erreur = await resEnvoi.text();
-    throw new Error(`Échec de l'envoi vers GitHub (${resEnvoi.status}) : ${erreur}`);
-  }
-
-  // Cache-busting (?v=...) pour forcer le navigateur à recharger la nouvelle image
-  return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${chemin}?v=${Date.now()}`;
-}
-
 async function gererFichierPhoto(event){
   const fichier = event.target.files[0];
   event.target.value = ""; // permet de reprendre la même photo une prochaine fois
@@ -1141,38 +946,41 @@ async function gererFichierPhoto(event){
 
   try{
     const blob = await redimensionnerImage(fichier, 400);
-    const url = await televerserPhotoGitHub(blob, personneActive);
+    const cheminPhoto = `profils/${personneActive}.jpg`;
+    const ref = storage.ref().child(cheminPhoto);
+    await ref.put(blob, { contentType: "image/jpeg" });
+    const url = await ref.getDownloadURL();
 
     const nouvelEtat = { ...etatCourant, profils: { ...etatCourant.profils } };
-    nouvelEtat.profils[personneActive] = { ...obtenirProfil(personneActive), photo: url };
+    nouvelEtat.profils[personneActive] = {
+      ...obtenirProfil(personneActive),
+      photo: url,
+      photoPath: cheminPhoto
+    };
     etatCourant = nouvelEtat;
     rendre();
     await DOC_REF.set(nouvelEtat);
   }catch(e){
     console.error("Erreur d'upload de la photo:", e);
-    alert("Impossible d'envoyer la photo. Vérifie ta connexion internet et le jeton GitHub.");
+    alert("Impossible d'envoyer la photo. Vérifie ta connexion internet.");
   }
 }
 
 /* ============================================================
-   ENVOI DE COURRIELS — file d'attente + préférences par parent
+   ENVOI DE COURRIELS — file d'attente
    EmailJS (plan gratuit) limite à 1 requête toutes les 5 secondes.
-   IMPORTANT : le champ "To Email" du template EmailJS doit utiliser
-   la variable {{to_email}} (et non des adresses codées en dur),
-   car chaque parent peut maintenant recevoir des courriels
-   différents selon ses préférences.
+   On empile les envois et on les traite un par un avec un délai
+   entre chaque, pour ne jamais dépasser la limite et éviter les
+   doublons causés par des envois trop rapprochés.
    ============================================================ */
 const DELAI_ENTRE_COURRIELS_MS = 5200; // légère marge au-dessus de 5s
 let fileCourriels = [];
 let fileEnCours = false;
 
-function notifierParents(nomEnfant, nomTache){
-  Object.entries(PERSONNES).forEach(([id, p])=>{
-    if(p.type !== "parent" || !p.email) return;
-    const pref = obtenirNotifPref(id);
-    if(pref.mode === "quotidien") return; // ce parent recevra un résumé plus tard, pas un courriel immédiat
-    fileCourriels.push({ email: p.email, nomEnfant, nomTache });
-  });
+function enfilerCourriels(nomEnfant, nomTache){
+  // Une seule requête suffit : les 2 adresses des parents sont déjà
+  // configurées en dur dans le champ "To Email" du template EmailJS.
+  fileCourriels.push({ nomEnfant, nomTache });
   traiterFileCourriels();
 }
 
@@ -1185,7 +993,6 @@ function traiterFileCourriels(){
     if(!item){ fileEnCours = false; return; }
 
     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      to_email: item.email,
       child_name: item.nomEnfant,
       task_name: item.nomTache,
       message: `${item.nomEnfant} a terminé "${item.nomTache}". Veuillez vérifier puis valider la complétion.`
@@ -1199,55 +1006,6 @@ function traiterFileCourriels(){
   };
 
   envoyerSuivant();
-}
-
-/* ============================================================
-   RÉSUMÉ QUOTIDIEN (parents ayant choisi "une fois par jour")
-   Approche "simple" : vérifiée à chaque chargement de l'app et à
-   intervalle régulier tant que l'app reste ouverte. Si personne
-   n'ouvre l'app autour de l'heure choisie, le résumé de ce jour-là
-   peut être manqué (limite d'un site statique sans serveur).
-   ============================================================ */
-let digestEnCours = new Set();
-
-function verifierDigestQuotidien(){
-  if(Object.keys(PERSONNES).length === 0) return;
-  const maintenant = new Date();
-  const heureCourante = String(maintenant.getHours()).padStart(2,"0") + ":" + String(maintenant.getMinutes()).padStart(2,"0");
-  const dateCle = formatDateCle(maintenant);
-
-  Object.entries(PERSONNES).forEach(([id, p])=>{
-    if(p.type !== "parent" || !p.email) return;
-    const pref = obtenirNotifPref(id);
-    if(pref.mode !== "quotidien") return;
-
-    const cleDigest = `${dateCle}_${id}`;
-    if(digestEnCours.has(cleDigest)) return;
-    if(etatCourant.digestEnvoye && etatCourant.digestEnvoye[cleDigest]) return;
-    if(heureCourante < pref.heure) return;
-
-    const auMoinsUnePendante = Object.entries(etatCourant.completions || {}).some(([cle, info])=>
-      cle.startsWith(dateCle + "_") && info.fait && !info.valide
-    );
-    if(!auMoinsUnePendante) return;
-
-    digestEnCours.add(cleDigest);
-    fileCourriels.push({ email: p.email, nomEnfant: "des enfants", nomTache: "Veuillez valider les tâches de la journée" });
-    traiterFileCourriels();
-    marquerDigestEnvoye(cleDigest);
-  });
-}
-
-async function marquerDigestEnvoye(cleDigest){
-  const nouvelEtat = { ...etatCourant, digestEnvoye: { ...(etatCourant.digestEnvoye||{}), [cleDigest]: true } };
-  etatCourant = nouvelEtat;
-  try{
-    await DOC_REF.set(nouvelEtat);
-  }catch(e){
-    console.error("Erreur lors du marquage du résumé quotidien:", e);
-  } finally {
-    digestEnCours.delete(cleDigest);
-  }
 }
 
 /* ============================================================
@@ -1328,7 +1086,7 @@ function vueTaches(){
         else if(fait){ classeCase += " fait"; contenuCase = "✓"; }
 
         return `
-          <div class="tache" ${fait ? '' : `onclick="toggleTache('${personneActive}', ${index})"`}>
+          <div class="tache" onclick="toggleTache('${personneActive}', ${index})">
             <div class="${classeCase}">${contenuCase}</div>
             <div class="texte-tache ${fait?'fait':''}">${texte}</div>
             ${fait && !valide ? '<div class="etiquette-attente">à valider</div>' : ''}
@@ -1367,17 +1125,9 @@ function vueTaches(){
     contenuPrincipal += blocs || `<div class="vide">Aucune tâche prévue aujourd'hui.</div>`;
   }
 
-  const themeCourant = obtenirProfil(personneActive).theme || "bleu";
-  const pastillesTheme = Object.entries(THEMES).map(([id, t])=>
-    `<div class="pastille-theme ${themeCourant===id?'actif':''}" style="background:${t.swatch};" onclick="choisirThemeMenu('${id}')" title="${t.label}"></div>`
-  ).join("");
-
   return `
     <div class="barre-haut">
-      <div class="entete-personne">
-        ${rendreAvatarEditable(personneActive)}
-        <div class="bienvenue">Bonjour, ${p.nom}</div>
-      </div>
+      <div class="bienvenue">Bonjour, ${p.nom}</div>
       <div class="deconnexion" onclick="retourLogin()">Se déconnecter</div>
     </div>
 
@@ -1394,10 +1144,10 @@ function vueTaches(){
     ${contenuPrincipal}
     <div class="conteneur-edition-profil">
       <div class="options-edition-profil" ${editionProfilOuverte ? '' : 'style="display:none;"'}>
-        <div class="selecteur-theme">${pastillesTheme}</div>
-        ${p.type === "parent" ? `<button class="bouton-option-edition" onclick="ouvrirParametresNotifications()" title="Notifications">${ICONES.cloche}</button>` : ''}
+        <button class="bouton-option-edition" onclick="changerThemeProfil()" title="Changer de thème">🎨</button>
+        <button class="bouton-option-edition" onclick="choisirPhotoProfil()" title="Changer d'image">🖼️</button>
       </div>
-      <button class="bouton-edition-profil ${editionProfilOuverte ? 'ouvert' : ''}" onclick="basculerEditionProfil()" title="${editionProfilOuverte ? 'Fermer les options' : 'Modifier le profil'}">${editionProfilOuverte ? ICONES.fermer : ICONES.crayon}</button>
+      <button class="bouton-edition-profil ${editionProfilOuverte ? 'ouvert' : ''}" onclick="basculerEditionProfil()" title="${editionProfilOuverte ? 'Fermer les options' : 'Modifier le profil'}">${editionProfilOuverte ? '✕' : '✎'}</button>
     </div>
   `;
 }
@@ -1408,8 +1158,6 @@ async function demarrer(){
   `;
   await chargerConfigPersonnes();
   rendre();
-  verifierDigestQuotidien();
-  setInterval(verifierDigestQuotidien, 5 * 60 * 1000); // revérifie toutes les 5 minutes
 }
 
 demarrer();
